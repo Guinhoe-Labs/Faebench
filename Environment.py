@@ -7,7 +7,9 @@ class Environment:
         # Game state
         self.teams = config.get("teams", 1)
         self.word_sets = {}
-        self.current_hint = None
+        self.neutral_words = []
+        self.board = []
+
         self.guessed_words = []
 
         # Configuration parameters
@@ -95,4 +97,13 @@ class Environment:
             "results": results,
             "correct_count": correct_count,
             "game_over": self.check_win()
+        }
+    
+    def get_game_state(self) -> dict:
+        """Return the full game state."""
+        return {
+            "board": self.board,
+            "word_sets": self.word_sets,
+            "neutral_words": self.neutral_words,
+            "guessed_words": self.guessed_words
         }
