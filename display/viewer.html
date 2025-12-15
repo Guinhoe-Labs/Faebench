@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Run Log Viewer</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f4f4f9;
+            color: #333;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background: #2c3e50;
+            color: #ecf0f1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #1a252f;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #1a252f;
+        }
+
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .refresh-btn {
+            margin-top: 10px;
+            padding: 8px;
+            width: 100%;
+            cursor: pointer;
+            background: #34495e;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #4e6a85;
+        }
+
+        .run-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .run-item {
+            padding: 15px;
+            margin-bottom: 8px;
+            background: #34495e;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .run-item:hover {
+            background: #46637f;
+            transform: translateX(2px);
+        }
+
+        .run-item.active {
+            background: #3498db;
+        }
+
+        .run-name {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+
+        .run-date {
+            font-size: 0.8em;
+            color: #bdc3c7;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Log Display (Reuse previous styles) */
+        .step {
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .step-header {
+            background: #f8f9fa;
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            user-select: none;
+        }
+
+        .step-header:hover {
+            background: #e9ecef;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .step-content {
+            padding: 20px;
+            display: none;
+            border-top: 1px solid #ddd;
+        }
+
+        .step-content.active {
+            display: block;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            display: block;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.9em;
+            border: 1px solid #e9ecef;
+            white-space: pre-wrap;
+            margin: 0;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* Board Styles */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .card {
+            padding: 12px 5px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9em;
+            position: relative;
+            background: #fff;
+        }
+
+        .card.guessed::after {
+            content: "✓";
+            position: absolute;
+            top: 2px;
+            right: 5px;
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .card.guessed {
+            border-color: #27ae60;
+            background: #f0fff4 !important;
+        }
+
+        .card.team-1 {
+            background-color: #e8f4f8;
+            border-color: #3498db;
+            color: #2980b9;
+        }
+
+        .card.neutral {
+            background-color: #fcf3cf;
+            border-color: #f1c40f;
+            color: #d35400;
+        }
+
+        .card.team-2 {
+            background-color: #fadbd8;
+            border-color: #e74c3c;
+            color: #c0392b;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #bdc3c7;
+            margin-top: 100px;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .meta-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Runs</h2>
+                <button class="refresh-btn" onclick="loadRuns()">Refresh List</button>
+            </div>
+            <div id="run-list" class="run-list">Loading...</div>
+        </div>
+
+        <div class="main-content" id="main-content">
+            <div class="empty-state">
+                <h3>Select a run from the sidebar to view details</h3>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadRuns() {
+            const listEl = document.getElementById('run-list');
+            listEl.innerHTML = '<div style="padding:20px; text-align:center">Refreshing...</div>';
+
+            try {
+                const resp = await fetch('/api/runs');
+                const data = await resp.json();
+
+                listEl.innerHTML = '';
+                if (data.length === 0) {
+                    listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#bdc3c7">No runs found in output/</div>';
+                    return;
+                }
+
+                data.forEach(run => {
+                    const item = document.createElement('div');
+                    item.className = 'run-item';
+                    const date = new Date(run.created * 1000).toLocaleString();
+                    item.innerHTML = `
+                    <span class="run-name">${run.filename}</span>
+                    <span class="run-date">${date}</span>
+                `;
+                    item.onclick = () => loadLog(run.filename, item);
+                    listEl.appendChild(item);
+                });
+            } catch (e) {
+                listEl.innerHTML = `<div style="padding:20px; color:#e74c3c">Error loading runs: ${e.message}</div>`;
+            }
+        }
+
+        async function loadLog(filename, clickedItem) {
+            // Active state
+            document.querySelectorAll('.run-item').forEach(el => el.classList.remove('active'));
+            if (clickedItem) clickedItem.classList.add('active');
+
+            const contentEl = document.getElementById('main-content');
+            contentEl.innerHTML = '<div style="text-align:center; margin-top:50px">Loading log data...</div>';
+
+            try {
+                const resp = await fetch(`/logs/${filename}`);
+                if (!resp.ok) throw new Error("File not found");
+                const data = await resp.json();
+                renderLog(data);
+            } catch (e) {
+                contentEl.innerHTML = `<div style="color:#e74c3c; text-align:center; margin-top:50px">Error loading log: ${e.message}</div>`;
+            }
+        }
+
+        function renderLog(data) {
+            const contentEl = document.getElementById('main-content');
+
+            let html = `
+            <div class="meta-grid">
+                <div class="meta-box">
+                    <div class="label">Run ID</div>
+                    <div style="font-weight:600">${data.run_id}</div>
+                </div>
+                <div class="meta-box">
+                    <div class="label">Total Steps</div>
+                    <div style="font-weight:600">${Object.keys(data.orchestration_log || {}).length}</div>
+                </div>
+            </div>
+            <div id="steps"></div>
+        `;
+            contentEl.innerHTML = html;
+
+            const logs = data.orchestration_log || {};
+            const stepsDiv = document.getElementById('steps');
+
+            const sortedKeys = Object.keys(logs).sort((a, b) => Number(a) - Number(b));
+
+            if (sortedKeys.length === 0) {
+                stepsDiv.innerHTML = '<p>No steps recorded.</p>';
+                return;
+            }
+
+            sortedKeys.forEach(key => {
+                const step = logs[key];
+                const isSuccess = step.success;
+                const statusClass = isSuccess ? 'status-success' : 'status-fail';
+
+                const stepHtml = `
+                <div class="step">
+                    <div class="step-header">
+                        <span>Step ${key}</span>
+                        <span class="status-badge ${statusClass}">${isSuccess ? 'Success' : 'Failed'}</span>
+                    </div>
+                    <div class="step-content">
+                        <div class="section">
+                            <div class="label">Board State</div>
+                            ${renderBoard(step.environment_state)}
+                        </div>
+                        
+                        <div class="grid-container">
+                            <!-- Master Column -->
+                            <div>
+                                <h3 style="margin-top:0; border-bottom:2px solid #3498db; padding-bottom:5px; color:#2c3e50;">Codemaster</h3>
+                                <div class="section">
+                                    <div class="label">Prompt</div>
+                                    <pre>${escapeHtml(step.master_prompt || "")}</pre>
+                                </div>
+                                <div class="section">
+                                    <div class="label">Raw Response</div>
+                                    <pre>${escapeHtml(step.master_response || "")}</pre>
+                                </div>
+                                <div class="section">
+                                    <div class="label">Action</div>
+                                    <pre style="background:#e8f4f8; border-color:#dbeff5;">${JSON.stringify(step.master_action, null, 2)}</pre>
+                                </div>
+                            </div>
+
+                            <!-- Player Column -->
+                            <div>
+                                <h3 style="margin-top:0; border-bottom:2px solid #e67e22; padding-bottom:5px; color:#2c3e50;">Guesser</h3>
+                                <div class="section">
+                                    <div class="label">Prompt</div>
+                                    <pre>${escapeHtml(step.player_prompt || "")}</pre>
+                                </div>
+                                <div class="section">
+                                    <div class="label">Raw Response</div>
+                                    <pre>${escapeHtml(step.player_response || "")}</pre>
+                                </div>
+                                <div class="section">
+                                    <div class="label">Guesses</div>
+                                    <pre style="background:#fdf2e9; border-color:#fadbd8;">${JSON.stringify(step.player_action, null, 2)}</pre>
+                                </div>
+                            </div>
+                        </div>
+
+                         <div class="section">
+                            <div class="label">Outcome</div>
+                            <pre>${JSON.stringify(step.player_result, null, 2)}</pre>
+                        </div>
+                    </div>
+                </div>
+            `;
+                const div = document.createElement('div');
+                div.innerHTML = stepHtml;
+                // Add click handler for toggle
+                div.querySelector('.step-header').onclick = function () {
+                    this.nextElementSibling.classList.toggle('active');
+                };
+                // Open first step by default
+                if (key === "1") div.querySelector('.step-content').classList.add('active');
+
+                stepsDiv.appendChild(div);
+            });
+        }
+
+        // --- Helpers ---
+        function renderBoard(envState) {
+            if (!envState || !envState.board) return "No board state";
+            const board = envState.board;
+            const guessed = new Set(envState.guessed_words || []);
+            const teamWords = new Set(envState.word_sets ? (envState.word_sets["1"] || []) : []);
+            const neutralWords = new Set(envState.neutral_words || []);
+
+            let html = '<div class="board">';
+            board.forEach(word => {
+                let typeClass = "";
+                if (teamWords.has(word)) typeClass = "team-1";
+                else if (neutralWords.has(word)) typeClass = "neutral";
+                else typeClass = "team-2";
+
+                const isGuessed = guessed.has(word);
+                html += `<div class="card ${typeClass} ${isGuessed ? 'guessed' : ''}">${escapeHtml(word)}</div>`;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function escapeHtml(text) {
+            if (typeof text !== 'string') return text;
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Init
+        loadRuns();
+    </script>
+</body>
+
+</html>
