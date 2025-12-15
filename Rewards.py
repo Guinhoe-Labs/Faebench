@@ -1,4 +1,4 @@
-def handleReward(event):
+def reward_function(event):
     env_data = event.get("environment_state", {})
     board = env_data.get("board")
 
