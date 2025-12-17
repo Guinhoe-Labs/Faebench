@@ -305,6 +305,8 @@ class OllamaOrchestrator(Orchestrator):
         except (json.JSONDecodeError, Exception):
             return None
     
+from prompts.reasoning_prompts import format_reasoning_master_prompt, format_reasoning_player_prompt
+
 class OpenAIOrchestrator(Orchestrator):
     def __init__(self, config, api_key):
         # Helper to convert config to dict safely
@@ -401,7 +403,7 @@ class OpenAIOrchestrator(Orchestrator):
         
         # Initialize log data
         m_state = self.get_master_state()
-        m_prompt = format_master_prompt(m_state)
+        m_prompt = format_reasoning_master_prompt(m_state)
         m_response = ""
         m_action = None
         master_result = {}
@@ -432,7 +434,7 @@ class OpenAIOrchestrator(Orchestrator):
                                          False, error_msg)
 
             p_state = self.get_player_state()
-            p_prompt = format_player_prompt(p_state)
+            p_prompt = format_reasoning_player_prompt(p_state)
             p_response = self._query_openai(p_prompt, self.player_model)
             
             player_action = self._parse_player_response(p_response)
@@ -525,7 +527,21 @@ class OpenAIOrchestrator(Orchestrator):
         try:
             resp = requests.post("https://api.openai.com/v1/responses", headers=headers, json=payload, timeout=2000)
             resp.raise_for_status()
-            return resp.json()["output"]["content"]["text"]
+            
+            data = resp.json()
+            # Handle dual output format: a list containing 'reasoning' and 'message'
+            outputs = data.get("output", [])
+            for item in outputs:
+                if item.get("type") == "message":
+                    content_list = item.get("content", [])
+                    for content_item in content_list:
+                        if content_item.get("type") == "output_text":
+                            return content_item.get("text", "")
+            
+            if "output" in data and "content" in data["output"]:
+                 return data["output"]["content"]["text"]
+                 
+            return ""
         except requests.exceptions.Timeout:
             return "Error: Timeout"
         except requests.exceptions.RequestException as e:
