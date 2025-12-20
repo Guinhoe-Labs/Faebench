@@ -11,7 +11,7 @@ CONFIG = OrchestratorConfig(
     env_config=EnvironmentConfig(
         teams=1,
         max_words=25,
-        word_list_file="Zigong/content/wordlist.txt"
+        word_list_file="./content/wordlist.txt"
     ),
     reward_config=RewardConfig()
 )
