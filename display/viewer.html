@@ -256,6 +256,130 @@
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
         }
+
+        /* Config Styles */
+        .config-container {
+            background: white;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .config-section {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+
+        .config-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .config-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .key-value {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .key-value .k {
+            font-weight: 500;
+            color: #7f8c8d;
+        }
+
+        .key-value .v {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        /* Player Response Styles */
+        .player-response-container {
+            font-size: 0.9em;
+        }
+
+        .round-block {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .round-header {
+            background: #f1f8ff;
+            padding: 8px 12px;
+            font-weight: 600;
+            color: #0366d6;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .agent-block {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .agent-block:last-child {
+            border-bottom: none;
+        }
+
+        .agent-id {
+            font-weight: 600;
+            color: #586069;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .thought-content {
+            background: #fafbfc;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #e1e4e8;
+            margin-bottom: 8px;
+            white-space: pre-wrap;
+            color: #24292e;
+        }
+
+        .result-content {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            padding: 8px;
+            border-radius: 4px;
+            color: #276749;
+            font-family: monospace;
+        }
+
+        .judge-section {
+            margin-top: 15px;
+            border: 1px solid #ffd700;
+            background: #fffdf5;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .judge-header {
+            background: #fff3c4;
+            padding: 8px 12px;
+            font-weight: 600;
+            color: #bfa900;
+            border-bottom: 1px solid #ffeeba;
+        }
+
+        .judge-content {
+            padding: 10px;
+        }
     </style>
 </head>
 
@@ -340,6 +464,7 @@
                     <div style="font-weight:600">${Object.keys(data.orchestration_log || {}).length}</div>
                 </div>
             </div>
+            ${renderConfig(data.config)}
             <div id="steps"></div>
         `;
             contentEl.innerHTML = html;
@@ -356,7 +481,18 @@
 
             sortedKeys.forEach(key => {
                 const step = logs[key];
-                const isSuccess = step.success;
+
+                // DATA NORMALIZATION
+                let stepData = step;
+                if (step.team_logs && step.team_logs["1"]) {
+                    stepData = step.team_logs["1"];
+                    // environment_state might be at step level or team level. 
+                    // Usually step level has the "true" state. 
+                    // But let's keep step.environment_state if available.
+                }
+                const envState = step.environment_state || stepData.environment_state;
+
+                const isSuccess = stepData.success; // Check specific team success or step success
                 const statusClass = isSuccess ? 'status-success' : 'status-fail';
 
                 const stepHtml = `
@@ -368,7 +504,7 @@
                     <div class="step-content">
                         <div class="section">
                             <div class="label">Board State</div>
-                            ${renderBoard(step.environment_state)}
+                            ${renderBoard(envState)}
                         </div>
                         
                         <div class="grid-container">
@@ -377,15 +513,15 @@
                                 <h3 style="margin-top:0; border-bottom:2px solid #3498db; padding-bottom:5px; color:#2c3e50;">Codemaster</h3>
                                 <div class="section">
                                     <div class="label">Prompt</div>
-                                    <pre>${escapeHtml(step.master_prompt || "")}</pre>
+                                    <pre>${escapeHtml(stepData.master_prompt || "")}</pre>
                                 </div>
                                 <div class="section">
                                     <div class="label">Raw Response</div>
-                                    <pre>${escapeHtml(step.master_response || "")}</pre>
+                                    <pre>${escapeHtml(stepData.master_response || "")}</pre>
                                 </div>
                                 <div class="section">
                                     <div class="label">Action</div>
-                                    <pre style="background:#e8f4f8; border-color:#dbeff5;">${JSON.stringify(step.master_action, null, 2)}</pre>
+                                    <pre style="background:#e8f4f8; border-color:#dbeff5;">${JSON.stringify(stepData.master_action, null, 2)}</pre>
                                 </div>
                             </div>
 
@@ -394,22 +530,22 @@
                                 <h3 style="margin-top:0; border-bottom:2px solid #e67e22; padding-bottom:5px; color:#2c3e50;">Guesser</h3>
                                 <div class="section">
                                     <div class="label">Prompt</div>
-                                    <pre>${escapeHtml(step.player_prompt || "")}</pre>
+                                    <pre>${escapeHtml(stepData.player_prompt || "")}</pre>
                                 </div>
                                 <div class="section">
-                                    <div class="label">Raw Response</div>
-                                    <pre>${escapeHtml(step.player_response || "")}</pre>
+                                    <div class="label">Response Analysis</div>
+                                    ${renderPlayerResponse(stepData.player_response)}
                                 </div>
                                 <div class="section">
                                     <div class="label">Guesses</div>
-                                    <pre style="background:#fdf2e9; border-color:#fadbd8;">${JSON.stringify(step.player_action, null, 2)}</pre>
+                                    <pre style="background:#fdf2e9; border-color:#fadbd8;">${JSON.stringify(stepData.player_action, null, 2)}</pre>
                                 </div>
                             </div>
                         </div>
 
                          <div class="section">
                             <div class="label">Outcome</div>
-                            <pre>${JSON.stringify(step.player_result, null, 2)}</pre>
+                            <pre>${JSON.stringify(stepData.player_result, null, 2)}</pre>
                         </div>
                     </div>
                 </div>
@@ -452,6 +588,123 @@
         function escapeHtml(text) {
             if (typeof text !== 'string') return text;
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function renderConfig(config) {
+            if (!config) return "";
+
+            let html = '<div class="config-container">';
+
+            // Env Config
+            if (config.env_config) {
+                html += '<div class="config-section"><div class="config-title">Environment Config</div>';
+                for (const [k, v] of Object.entries(config.env_config)) {
+                    html += `<div class="key-value"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+                }
+                html += '</div>';
+            }
+
+            // Reward Config
+            if (config.reward_config) {
+                html += '<div class="config-section"><div class="config-title">Reward Config</div>';
+                for (const [k, v] of Object.entries(config.reward_config)) {
+                    html += `<div class="key-value"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+                }
+                html += '</div>';
+            }
+
+            // Team Config (simplified)
+            if (config.team_configs && config.team_configs.length > 0) {
+                html += '<div class="config-section"><div class="config-title">Team Config</div>';
+                const tm = config.team_configs[0];
+                if (tm.master_model) {
+                    html += `<div class="key-value"><span class="k">Master Model</span><span class="v">${tm.master_model.model}</span></div>`;
+                }
+                if (tm.player_models) {
+                    html += `<div class="key-value"><span class="k">Player Models</span><span class="v">${tm.player_models.length} agents</span></div>`;
+                    tm.player_models.forEach((pm, idx) => {
+                        html += `<div class="key-value"><span class="k">&nbsp;&nbsp;Agent ${idx}</span><span class="v">${pm.model || "default"}</span></div>`;
+                    });
+                }
+                html += '</div>';
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderPlayerResponse(responseStr) {
+            if (!responseStr) return '<div style="color:#bdc3c7">No response</div>';
+
+            let data;
+            try {
+                // Try parsing if it's a JSON string
+                if (typeof responseStr === 'string' && (responseStr.trim().startsWith('{') || responseStr.trim().startsWith('['))) {
+                    data = JSON.parse(responseStr);
+                } else {
+                    // Not JSON, return raw
+                    return `<pre>${escapeHtml(responseStr)}</pre>`;
+                }
+            } catch (e) {
+                // Parse error, return raw
+                return `<pre>${escapeHtml(responseStr)}</pre>`;
+            }
+
+            // If parsed successfully however it doesn't have the expected structure, dump it
+            if (!data.round_1 && !data.round_2 && !data.judge_reasoning) {
+                return `<pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+            }
+
+            let html = '<div class="player-response-container">';
+
+            // Helper for thought/result parsing
+            const formatContent = (text) => {
+                if (!text) return "";
+                // simple extraction of THOUGHT and RESULT tags if present
+                const thoughtMatch = text.match(/<THOUGHT>([\s\S]*?)<\/THOUGHT>/);
+                const resultMatch = text.match(/<RESULT>([\s\S]*?)<\/RESULT>/);
+
+                let out = "";
+                if (thoughtMatch) {
+                    out += `<div class="thought-content"><strong>Thought:</strong><br>${escapeHtml(thoughtMatch[1].trim())}</div>`;
+                }
+                if (resultMatch) {
+                    out += `<div class="result-content"><strong>Result:</strong> ${escapeHtml(resultMatch[1].trim())}</div>`;
+                }
+
+                // If neither, just show text
+                if (!out) out = `<div class="thought-content">${escapeHtml(text)}</div>`;
+                return out;
+            };
+
+            // Round 1
+            if (data.round_1) {
+                html += '<div class="round-block"><div class="round-header">Round 1 (Individual Thoughts)</div>';
+                for (const [agentId, content] of Object.entries(data.round_1)) {
+                    html += `<div class="agent-block"><span class="agent-id">Agent ${agentId}</span>${formatContent(content)}</div>`;
+                }
+                html += '</div>';
+            }
+
+            // Round 2
+            if (data.round_2) {
+                html += '<div class="round-block"><div class="round-header">Round 2 (Consensus Building)</div>';
+                for (const [agentId, content] of Object.entries(data.round_2)) {
+                    html += `<div class="agent-block"><span class="agent-id">Agent ${agentId}</span>${formatContent(content)}</div>`;
+                }
+                html += '</div>';
+            }
+
+            // Judge
+            if (data.judge_reasoning) {
+                html += `<div class="judge-section">
+                            <div class="judge-header">Judge Decision</div>
+                            <div class="judge-content">${formatContent(data.judge_reasoning)}</div>
+                         </div>`;
+            }
+
+            html += '</div>';
+            return html;
         }
 
         // Init

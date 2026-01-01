@@ -7,7 +7,7 @@ import glob
 import json
 
 app = FastAPI()
-OUTPUT_DIR = "output"
+OUTPUT_DIR = "/Users/derekzhu/Guinhoe Labs/Faebench/output"
 
 # Ensure output directory exists
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -46,7 +46,7 @@ async def get_log(filename: str):
 
 @app.get("/")
 async def serve_viewer():
-    return FileResponse("viewer.html")
+    return FileResponse(os.path.join(os.path.dirname(os.path.abspath(__file__)), "viewer.html"))
 
 # Serve other static files if needed (like if we had a css/js folder, but viewer.html is standalone for now)
 # app.mount("/static", StaticFiles(directory="static"), name="static")
