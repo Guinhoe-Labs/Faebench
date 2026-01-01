@@ -5,7 +5,6 @@ import random
 class Environment:
     def __init__(self, config):
         # Game state
-        
         if isinstance(config, dict):
             self.teams = config.get("teams", 1)
             self.max_words = config.get("max_words", 25)

@@ -10,6 +10,7 @@ from configs.Configs import OrchestratorConfig
 from messages.Message import MasterStateMessage, PlayerStateMessage, MasterActionMessage, PlayerActionMessage
 from prompts.agent_prompts import format_master_prompt, format_player_prompt
 from Rewards import RewardModule
+from core.CrossTalk import CrossTalkModule
 
 class Orchestrator:
     def __init__(self, orchestration_config):
@@ -152,9 +153,15 @@ class Orchestrator:
             if len(self.teams[team_id]["player_models"]) == 1:
                 p_action, p_response = self.teams[team_id]["player_models"][0].generate_player_action(p_prompt)
             else:
-                # TODO: Implement multi-player querying logic
-                print(f"[WARNING] Multiple player models found for team {team_id}, but logic not implemented.")
-                pass
+                # Multi-player Consensus (utilizing cross-talk)
+                ct_module = CrossTalkModule(self.teams[team_id]["player_models"])
+                
+                # Extract hint text for prompts
+                hint_data = m_result["result"]["hint"]
+                hint_text = f"{hint_data.get('word', 'UNKNOWN')} {hint_data.get('number', 0)}"
+                
+                p_action, p_response = ct_module.execute(initial_prompt=p_prompt, hint_text=hint_text)
+                print(f"[DEBUG] Team {team_id} Players Response:", p_response)
 
             # p_action = self._parse_player_response(p_response)
             print(f"[DEBUG] Team {team_id} Player Action:", p_action)
